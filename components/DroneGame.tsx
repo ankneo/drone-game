@@ -67,6 +67,9 @@ export default function DroneGame() {
     }
     setIsLoaded(true);
 
+    // Force scroll to top for mobile
+    window.scrollTo(0, 0);
+
     return () => {
       if (soundRef.current?.ctx) {
         soundRef.current.ctx.close();
@@ -961,9 +964,9 @@ export default function DroneGame() {
   };
 
   return (
-    <div className="w-full flex flex-col gap-4">
+    <div className="w-full flex flex-col gap-2 md:gap-4">
       {['playing', 'gameover', 'levelcomplete'].includes(gameState) && (
-        <div className="w-full bg-slate-900 rounded-xl p-3 md:p-4 border border-slate-800 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-3">
+        <div className="w-full bg-slate-900 rounded-xl p-2 md:p-4 border border-slate-800 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-2 md:gap-3">
           {/* Left: Time & Par */}
           <div className="flex gap-4 w-full sm:w-auto justify-around sm:justify-start">
             <div className="flex items-center gap-2 md:gap-3">
@@ -999,33 +1002,33 @@ export default function DroneGame() {
           {/* Right: Pulse, Fuel & Armor */}
           <div className="flex gap-3 md:gap-4 items-center w-full sm:w-auto justify-around sm:justify-end">
             <div className="flex flex-col items-center gap-1">
-              <div className="relative p-1 md:p-1.5 rounded-lg border bg-slate-900 border-slate-800">
-                <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-700" />
+              <div className="relative p-0.5 md:p-1.5 rounded-lg border bg-slate-900 border-slate-800">
+                <Zap className="w-3 h-3 md:w-4 md:h-4 text-slate-700" />
                 {pulseCooldown > 0 && (
                   <div className="absolute inset-0 overflow-hidden flex items-center justify-center" style={{ clipPath: `inset(${100 - ((120 - pulseCooldown) / 120) * 100}% 0 0 0)` }}>
-                    <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400" />
+                    <Zap className="w-3 h-3 md:w-4 md:h-4 text-cyan-400" />
                   </div>
                 )}
                 {pulseCooldown === 0 && (
-                  <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400 absolute inset-0 m-1 md:m-1.5" />
+                  <Zap className="w-3 h-3 md:w-4 md:h-4 text-cyan-400 absolute inset-0 m-0.5 md:m-1.5" />
                 )}
               </div>
-              <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Pulse <span className="hidden md:inline">[Space]</span></span>
+              <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase tracking-tighter leading-none">Pulse</span>
             </div>
             <div className="w-px h-6 md:h-8 bg-slate-700/50" />
             {armorHits > 0 && (
               <>
                 <div className="flex items-center gap-2 md:gap-3">
-                  <Shield className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
+                  <Shield className="w-3.5 h-3.5 md:w-5 md:h-5 text-blue-400" />
                   <div className="flex flex-col">
                     <span className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Armor</span>
-                    <span className="text-base md:text-lg font-mono text-blue-400 leading-none mt-1">{armorHits}</span>
+                    <span className="text-sm md:text-lg font-mono text-blue-400 leading-none mt-1">{armorHits}</span>
                   </div>
                 </div>
                 <div className="w-px h-6 md:h-8 bg-slate-700/50" />
               </>
             )}
-            <div className="flex flex-col gap-1 w-24 md:w-32">
+            <div className="flex flex-col gap-1 w-20 md:w-32">
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-1">
                   <Battery className="w-3 h-3 md:w-4 md:h-4 text-cyan-400" />
@@ -1049,12 +1052,12 @@ export default function DroneGame() {
         </div>
       )}
 
-      <div className="relative w-full max-w-[min(100%,calc((100vh-280px)*4/3))] aspect-[4/3] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-800 mx-auto">
+      <div className="relative w-full max-w-[min(100%,calc((100svh-280px)*4/3))] aspect-[4/3] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-800 mx-auto">
         <canvas
         ref={canvasRef}
         width={CANVAS_WIDTH}
         height={CANVAS_HEIGHT}
-        className="w-full h-full block"
+        className="w-full h-full block touch-none select-none"
       />
 
       <AnimatePresence>
@@ -1393,7 +1396,7 @@ export default function DroneGame() {
 
     {/* Mobile Controls */}
     {gameState === 'playing' && (
-      <div className="md:hidden flex justify-between items-end p-6 fixed bottom-0 left-0 w-full z-50 pointer-events-none mb-4">
+      <div className="md:hidden flex justify-between items-end p-4 fixed bottom-0 left-0 w-full z-50 pointer-events-none">
         {/* Joystick */}
         <Joystick 
           onChange={(dir) => {
@@ -1413,7 +1416,9 @@ export default function DroneGame() {
             onPointerDown={(e) => { e.preventDefault(); keysRef.current[' '] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
+            onPointerCancel={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
             onContextMenu={(e) => e.preventDefault()}
+            style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', WebkitUserDrag: 'none', userSelect: 'none', touchAction: 'none' } as any}
           >
             <Zap className={`w-10 h-10 ${pulseCooldown === 0 ? 'text-cyan-300' : 'text-slate-500'}`} />
           </button>

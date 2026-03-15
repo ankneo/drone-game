@@ -11,17 +11,20 @@ export function Joystick({ onChange }: JoystickProps) {
   const maxRadius = 40;
 
   const handlePointerDown = (e: React.PointerEvent) => {
+    e.preventDefault();
     isDragging.current = true;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     updatePosition(e);
   };
 
   const handlePointerMove = (e: React.PointerEvent) => {
+    e.preventDefault();
     if (!isDragging.current) return;
     updatePosition(e);
   };
 
   const handlePointerUp = (e: React.PointerEvent) => {
+    e.preventDefault();
     isDragging.current = false;
     (e.target as HTMLElement).releasePointerCapture(e.pointerId);
     setPosition({ x: 0, y: 0 });
@@ -66,14 +69,22 @@ export function Joystick({ onChange }: JoystickProps) {
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onContextMenu={(e) => e.preventDefault()}
+      style={{ WebkitTouchCallout: 'none', WebkitUserSelect: 'none', WebkitUserDrag: 'none' } as any}
     >
       {/* Inner guiding circle */}
       <div className="absolute inset-0 m-auto w-12 h-12 rounded-full border border-white/5" />
       
       {/* Stick */}
       <div 
-        className="w-14 h-14 bg-emerald-500/80 rounded-full border-2 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] absolute"
-        style={{ transform: `translate(${position.x}px, ${position.y}px)` }}
+        className="w-14 h-14 bg-emerald-500/80 rounded-full border-2 border-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.5)] absolute select-none touch-none pointer-events-none"
+        style={{ 
+          transform: `translate(${position.x}px, ${position.y}px)`,
+          WebkitTouchCallout: 'none',
+          WebkitUserSelect: 'none',
+          WebkitUserDrag: 'none',
+          userSelect: 'none',
+          touchAction: 'none'
+        } as any}
       />
     </div>
   );
