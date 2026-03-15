@@ -28,6 +28,7 @@ export default function DroneGame() {
   const [shake, setShake] = useState(0);
   const [slowmo, setSlowmo] = useState(0);
   const [medals, setMedals] = useState<Record<number, { time: boolean; fuel: boolean; accuracy: boolean }>>({});
+  const [badgeInfo, setBadgeInfo] = useState<string | null>(null);
   const [isCRT, setIsCRT] = useState(true);
 
   const gameStateRef = useRef(gameState);
@@ -56,7 +57,22 @@ export default function DroneGame() {
     levelIndexRef.current = levelIndex;
     modsRef.current = mods;
     skinRef.current = equippedSkin;
+
+    if (gameState === 'playing') {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
   }, [gameState, levelIndex, mods, equippedSkin]);
+
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    };
+  }, []);
 
   const droneRef = useRef({ 
     x: 50, y: 50, w: 24, h: 24, vx: 0, vy: 0, 
@@ -490,12 +506,19 @@ export default function DroneGame() {
         setScore(levelScore);
         setTotalScore(prev => prev + levelScore);
         // Update medals
-      const levelMedals = {
-        time: levelTime < LEVELS[levelIndex].parTime,
-        fuel: fuel > (LEVELS[levelIndex].fuel * mods.battery) * 0.5,
-        accuracy: landingAccuracy > 90
-      };
-      setMedals(prev => ({ ...prev, [levelIndex]: levelMedals }));
+        // Update medals (Cumulative: once earned, they stay earned)
+        setMedals(prev => {
+          const idx = levelIndexRef.current;
+          const current = prev[idx] || { time: false, fuel: false, accuracy: false };
+          return {
+            ...prev,
+            [idx]: {
+              time: current.time || currentTime < level.parTime,
+              fuel: current.fuel || (drone.fuel / (level.fuel * currentMods.battery)) >= 0.9,
+              accuracy: current.accuracy || accuracy > 90
+            }
+          };
+        });
       
       setGameState('levelcomplete');
       } else {
@@ -899,30 +922,30 @@ export default function DroneGame() {
   };
 
   return (
-    <div className="w-full max-w-4xl mx-auto flex flex-col gap-4">
+    <div className="w-full flex flex-col gap-4">
       {['playing', 'gameover', 'levelcomplete'].includes(gameState) && (
-        <div className="w-full bg-slate-900 rounded-xl p-4 border border-slate-800 shadow-xl flex justify-between items-center">
+        <div className="w-full bg-slate-900 rounded-xl p-3 md:p-4 border border-slate-800 shadow-xl flex flex-col sm:flex-row justify-between items-center gap-3">
           {/* Left: Time & Par */}
-          <div className="flex gap-4">
-            <div className="flex items-center gap-3">
-              <Clock className="w-5 h-5 text-emerald-400" />
+          <div className="flex gap-4 w-full sm:w-auto justify-around sm:justify-start">
+            <div className="flex items-center gap-2 md:gap-3">
+              <Clock className="w-4 h-4 md:w-5 md:h-5 text-emerald-400" />
               <div className="flex flex-col">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Time</span>
-                <span className="text-lg font-mono text-white leading-none mt-1">{levelTime.toFixed(1)}s</span>
+                <span className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Time</span>
+                <span className="text-base md:text-lg font-mono text-white leading-none mt-1">{levelTime.toFixed(1)}s</span>
               </div>
             </div>
-            <div className="w-px h-8 bg-slate-700/50" />
-            <div className="flex items-center gap-3">
-              <Timer className="w-5 h-5 text-slate-400" />
+            <div className="w-px h-6 md:h-8 bg-slate-700/50" />
+            <div className="flex items-center gap-2 md:gap-3">
+              <Timer className="w-4 h-4 md:w-5 md:h-5 text-slate-400" />
               <div className="flex flex-col">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Par</span>
-                <span className="text-lg font-mono text-slate-300 leading-none mt-1">{LEVELS[levelIndex].parTime.toFixed(1)}s</span>
+                <span className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Par</span>
+                <span className="text-base md:text-lg font-mono text-slate-300 leading-none mt-1">{LEVELS[levelIndex].parTime.toFixed(1)}s</span>
               </div>
             </div>
           </div>
 
           {/* Center: Level Info & Score */}
-          <div className="flex flex-col items-center gap-1">
+          <div className="hidden sm:flex flex-col items-center gap-1">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">Level {levelIndex + 1}</span>
               <span className="text-slate-600">•</span>
@@ -935,45 +958,45 @@ export default function DroneGame() {
           </div>
 
           {/* Right: Pulse, Fuel & Armor */}
-          <div className="flex gap-4 items-center">
+          <div className="flex gap-3 md:gap-4 items-center w-full sm:w-auto justify-around sm:justify-end">
             <div className="flex flex-col items-center gap-1">
-              <div className="relative p-1.5 rounded-lg border bg-slate-900 border-slate-800">
-                <Zap className="w-4 h-4 text-slate-700" />
+              <div className="relative p-1 md:p-1.5 rounded-lg border bg-slate-900 border-slate-800">
+                <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-slate-700" />
                 {pulseCooldown > 0 && (
                   <div className="absolute inset-0 overflow-hidden flex items-center justify-center" style={{ clipPath: `inset(${100 - ((120 - pulseCooldown) / 120) * 100}% 0 0 0)` }}>
-                    <Zap className="w-4 h-4 text-cyan-400" />
+                    <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400" />
                   </div>
                 )}
                 {pulseCooldown === 0 && (
-                  <Zap className="w-4 h-4 text-cyan-400 absolute inset-0 m-1.5" />
+                  <Zap className="w-3.5 h-3.5 md:w-4 md:h-4 text-cyan-400 absolute inset-0 m-1 md:m-1.5" />
                 )}
               </div>
-              <span className="text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Pulse [Space]</span>
+              <span className="text-[7px] md:text-[8px] font-bold text-slate-500 uppercase tracking-tighter">Pulse <span className="hidden md:inline">[Space]</span></span>
             </div>
-            <div className="w-px h-8 bg-slate-700/50" />
+            <div className="w-px h-6 md:h-8 bg-slate-700/50" />
             {armorHits > 0 && (
               <>
-                <div className="flex items-center gap-3">
-                  <Shield className="w-5 h-5 text-blue-400" />
+                <div className="flex items-center gap-2 md:gap-3">
+                  <Shield className="w-4 h-4 md:w-5 md:h-5 text-blue-400" />
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Armor</span>
-                    <span className="text-lg font-mono text-blue-400 leading-none mt-1">{armorHits}</span>
+                    <span className="text-[8px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider leading-none">Armor</span>
+                    <span className="text-base md:text-lg font-mono text-blue-400 leading-none mt-1">{armorHits}</span>
                   </div>
                 </div>
-                <div className="w-px h-8 bg-slate-700/50" />
+                <div className="w-px h-6 md:h-8 bg-slate-700/50" />
               </>
             )}
-            <div className="flex flex-col gap-1 w-32">
+            <div className="flex flex-col gap-1 w-24 md:w-32">
               <div className="flex justify-between items-center">
-                <div className="flex items-center gap-1.5">
-                  <Battery className="w-4 h-4 text-cyan-400" />
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fuel</span>
+                <div className="flex items-center gap-1">
+                  <Battery className="w-3 h-3 md:w-4 md:h-4 text-cyan-400" />
+                  <span className="text-[7px] md:text-[10px] text-slate-400 font-bold uppercase tracking-wider">Fuel</span>
                 </div>
-                <span className="text-xs font-mono text-cyan-400">
+                <span className="text-[10px] md:text-xs font-mono text-cyan-400">
                   {Math.max(0, Math.round((fuel / (LEVELS[levelIndex].fuel * mods.battery)) * 100))}%
                 </span>
               </div>
-              <div className="h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
+              <div className="h-1.5 md:h-2 bg-slate-950 rounded-full overflow-hidden border border-slate-800">
                 <div 
                   className={`h-full transition-all duration-75 ${
                     (fuel / (LEVELS[levelIndex].fuel * mods.battery)) > 0.5 ? 'bg-emerald-500' : 
@@ -987,7 +1010,7 @@ export default function DroneGame() {
         </div>
       )}
 
-      <div className="relative w-full aspect-[4/3] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-800">
+      <div className="relative w-full max-w-[min(100%,calc((100vh-280px)*4/3))] aspect-[4/3] bg-slate-900 rounded-xl overflow-hidden shadow-2xl border border-slate-800 mx-auto">
         <canvas
         ref={canvasRef}
         width={CANVAS_WIDTH}
@@ -1001,7 +1024,7 @@ export default function DroneGame() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm"
+            className="fixed inset-0 z-[100] flex items-start justify-center bg-slate-950/95 backdrop-blur-md overflow-y-auto pt-4 md:items-center md:pt-0"
           >
             {gameState === 'menu' && (
               <div className="text-center space-y-6">
@@ -1028,145 +1051,186 @@ export default function DroneGame() {
             )}
 
             {gameState === 'levelcomplete' && (
-              <div className="text-center space-y-6 bg-slate-900/90 p-8 rounded-2xl border border-slate-700">
-                <h2 className="text-4xl font-bold text-emerald-400">Landing Successful</h2>
+              <div className="text-center space-y-6 md:space-y-8 bg-slate-900/60 p-8 md:p-12 rounded-3xl border border-white/5 backdrop-blur-2xl w-full max-w-2xl mx-4 my-auto shadow-2xl">
+                <div className="relative">
+                  <motion.div
+                    animate={{ scale: [1, 1.1, 1], rotate: [0, 5, -5, 0] }}
+                    transition={{ duration: 4, repeat: Infinity }}
+                  >
+                    <Trophy className="w-20 h-20 md:w-28 md:h-28 text-yellow-500 mx-auto drop-shadow-[0_0_20px_rgba(234,179,8,0.4)]" />
+                  </motion.div>
+                </div>
                 
-                <div className="flex justify-center gap-4 my-4">
-                  <div className={`flex flex-col items-center p-3 rounded-xl border ${medals[levelIndex]?.time ? 'bg-yellow-500/20 border-yellow-500' : 'bg-slate-800/50 border-slate-700 opacity-30'}`}>
-                    <Timer className={`w-8 h-8 ${medals[levelIndex]?.time ? 'text-yellow-400' : 'text-slate-500'}`} />
-                    <span className="text-[10px] font-bold uppercase mt-1">Speed</span>
-                  </div>
-                  <div className={`flex flex-col items-center p-3 rounded-xl border ${medals[levelIndex]?.fuel ? 'bg-emerald-500/20 border-emerald-500' : 'bg-slate-800/50 border-slate-700 opacity-30'}`}>
-                    <Battery className={`w-8 h-8 ${medals[levelIndex]?.fuel ? 'text-emerald-400' : 'text-slate-500'}`} />
-                    <span className="text-[10px] font-bold uppercase mt-1">Efficiency</span>
-                  </div>
-                  <div className={`flex flex-col items-center p-3 rounded-xl border ${medals[levelIndex]?.accuracy ? 'bg-cyan-500/20 border-cyan-500' : 'bg-slate-800/50 border-slate-700 opacity-30'}`}>
-                    <Target className={`w-8 h-8 ${medals[levelIndex]?.accuracy ? 'text-cyan-400' : 'text-slate-500'}`} />
-                    <span className="text-[10px] font-bold uppercase mt-1">Precision</span>
+                <div className="space-y-2">
+                  <h2 className="text-3xl md:text-6xl font-black text-transparent bg-clip-text bg-gradient-to-b from-white to-slate-400 uppercase tracking-tighter italic">Mission Success</h2>
+                  <div className="flex items-center justify-center gap-2 text-emerald-400 font-mono text-sm tracking-[0.2em] uppercase">
+                    <span className="w-8 h-px bg-emerald-400/30" />
+                    Level {levelIndex + 1} Cleared
+                    <span className="w-8 h-px bg-emerald-400/30" />
                   </div>
                 </div>
 
-                <div className="space-y-2 text-left bg-slate-800/50 p-4 rounded-lg">
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Base Score:</span>
-                    <span className="text-white font-mono">1000</span>
+                <div className="grid grid-cols-3 gap-4 max-w-sm mx-auto">
+                  <div 
+                    onClick={() => setBadgeInfo('Speed: Finish before the Par Time.')}
+                    className={`p-4 rounded-2xl border transition-all duration-500 cursor-help active:scale-95 ${medals[levelIndex]?.time ? 'bg-yellow-500/10 border-yellow-500/50 shadow-[0_0_15px_rgba(234,179,8,0.1)]' : 'bg-slate-800/20 border-white/5 grayscale opacity-20'}`}
+                  >
+                    <Timer className={`w-8 h-8 mx-auto ${medals[levelIndex]?.time ? 'text-yellow-500' : 'text-slate-500'}`} />
+                    <p className="text-[10px] font-black uppercase mt-2 tracking-widest">Speed</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Time Bonus ({levelTime.toFixed(1)}s / {LEVELS[levelIndex].parTime}s):</span>
-                    <span className="text-white font-mono">+{Math.max(0, Math.floor((LEVELS[levelIndex].parTime - levelTime) * 100))}</span>
+                  <div 
+                    onClick={() => setBadgeInfo('Fuel: Finish with more than 90% fuel remaining.')}
+                    className={`p-4 rounded-2xl border transition-all duration-500 cursor-help active:scale-95 ${medals[levelIndex]?.fuel ? 'bg-emerald-500/10 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.1)]' : 'bg-slate-800/20 border-white/5 grayscale opacity-20'}`}
+                  >
+                    <Battery className={`w-8 h-8 mx-auto ${medals[levelIndex]?.fuel ? 'text-emerald-500' : 'text-slate-500'}`} />
+                    <p className="text-[10px] font-black uppercase mt-2 tracking-widest">Fuel</p>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Fuel Bonus ({((fuel / (LEVELS[levelIndex].fuel * mods.battery)) * 100).toFixed(1)}%):</span>
-                    <span className="text-white font-mono">+{Math.floor((fuel / (LEVELS[levelIndex].fuel * mods.battery)) * 500)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Accuracy ({landingAccuracy.toFixed(1)}%):</span>
-                    <span className="text-white font-mono">+{Math.floor(landingAccuracy * 10)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-400">Missiles Destroyed ({missileDestroyedCount}):</span>
-                    <span className="text-white font-mono">+{missileDestroyedCount * 100}</span>
-                  </div>
-                  <div className="border-t border-slate-700 pt-2 mt-2 flex justify-between font-bold">
-                    <span className="text-emerald-400">Level Score:</span>
-                    <span className="text-emerald-400 font-mono">{score}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span className="text-cyan-400">Total Credits:</span>
-                    <span className="text-cyan-400 font-mono">{totalScore}</span>
+                  <div 
+                    onClick={() => setBadgeInfo('Aim: Land with over 90% centering accuracy.')}
+                    className={`p-4 rounded-2xl border transition-all duration-500 cursor-help active:scale-95 ${medals[levelIndex]?.accuracy ? 'bg-cyan-500/10 border-cyan-500/50 shadow-[0_0_15px_rgba(6,182,212,0.1)]' : 'bg-slate-800/20 border-white/5 grayscale opacity-20'}`}
+                  >
+                    <Target className={`w-8 h-8 mx-auto ${medals[levelIndex]?.accuracy ? 'text-cyan-500' : 'text-slate-500'}`} />
+                    <p className="text-[10px] font-black uppercase mt-2 tracking-widest">Aim</p>
                   </div>
                 </div>
 
-                <button onClick={() => setGameState('shop')} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-semibold flex items-center gap-2 mx-auto transition-colors cursor-pointer">
-                  Continue to Shop <ArrowRight className="w-5 h-5" />
+                <AnimatePresence>
+                  {badgeInfo && (
+                    <motion.p
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0 }}
+                      className="text-[10px] font-bold text-slate-400 uppercase tracking-widest animate-pulse"
+                    >
+                      {badgeInfo}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+
+                <div className="bg-white/5 rounded-3xl p-6 space-y-3 backdrop-blur-sm border border-white/5">
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-widest">Base Reward</span>
+                    <span className="font-mono text-lg text-white">1000</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-widest">Time Bonus</span>
+                    <span className="font-mono text-lg text-emerald-400">+{Math.max(0, Math.floor((LEVELS[levelIndex].parTime - levelTime) * 100))}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-widest">Efficiency</span>
+                    <span className="font-mono text-lg text-emerald-400">+{Math.floor((fuel / (LEVELS[levelIndex].fuel * mods.battery)) * 500)}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-slate-400">
+                    <span className="text-xs font-bold uppercase tracking-widest">Landing Accuracy</span>
+                    <span className="font-mono text-lg text-cyan-400">+{Math.floor(landingAccuracy * 10)}</span>
+                  </div>
+                  <div className="h-px bg-white/10 my-2" />
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-black uppercase tracking-[0.2em] text-yellow-500">Total Credits</span>
+                    <span className="font-mono text-2xl text-yellow-500 font-black">{score}</span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    setGameState('shop');
+                    setBadgeInfo(null);
+                  }} 
+                  className="group relative px-12 py-4 bg-emerald-500 hover:bg-emerald-400 text-white rounded-2xl font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95 shadow-xl shadow-emerald-500/20"
+                >
+                  <span className="relative z-10 flex items-center gap-3">
+                    Enter Hangar <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
                 </button>
               </div>
             )}
 
             {gameState === 'shop' && (
-              <div className="text-center space-y-6 bg-slate-900/90 p-6 rounded-2xl border border-slate-700 max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-                <h2 className="text-2xl font-bold text-white">Drone Modifications</h2>
-                <div className="text-lg font-mono text-cyan-400 mb-4">Credits: {totalScore}</div>
+              <div className="min-h-full w-full flex flex-col md:max-w-5xl md:max-h-[90vh] md:rounded-3xl border-t border-white/10 md:border bg-slate-900/40 backdrop-blur-2xl shadow-2xl safe-p-bottom">
+                <div className="sticky top-0 z-10 px-6 py-4 bg-slate-950/60 backdrop-blur-xl border-b border-white/5 flex justify-between items-center">
+                  <h2 className="text-xl md:text-3xl font-black text-white uppercase tracking-tighter italic">Hangar & Upgrades</h2>
+                  <div className="px-4 py-2 bg-yellow-500/10 rounded-2xl border border-yellow-500/20 flex items-center gap-2">
+                    <Trophy className="w-4 h-4 text-yellow-500" />
+                    <span className="text-xl md:text-2xl font-mono text-yellow-500 font-black">{totalScore} <span className="text-[10px] opacity-50 font-normal tracking-widest">CR</span></span>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto p-6 space-y-8">
                 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2">
-                    <Zap className="w-6 h-6 text-yellow-400" />
-                    <h3 className="font-bold text-white text-center text-sm min-h-[2.5rem] flex items-center justify-center">Engine Upgrade</h3>
-                    <p className="text-[10px] text-slate-400 text-center h-8 flex items-center justify-center">Increases thrust power by 20%</p>
-                    <div className="text-xs font-mono text-slate-300 text-center">Lvl {Math.round((mods.engine - 1) / 0.2)}</div>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 md:gap-3">
+                  <div className="bg-slate-800/50 p-2 md:p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-1 md:gap-2">
+                    <Zap className="w-4 h-4 md:w-6 md:h-6 text-yellow-400" />
+                    <h3 className="font-bold text-white text-center text-[10px] md:text-sm uppercase tracking-tight">Thrust</h3>
+                    <div className="text-[8px] md:text-[10px] font-mono text-slate-400 leading-none">Lvl {Math.round((mods.engine - 1) / 0.2)}</div>
                     <button 
                       onClick={() => buyMod('engine')}
                       disabled={totalScore < getModCost('engine')}
-                      className="mt-auto px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-sm transition-colors cursor-pointer"
+                      className="mt-auto px-2 py-1 md:px-3 md:py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-[9px] md:text-sm transition-colors cursor-pointer"
                     >
-                      {getModCost('engine')} CR
+                      {getModCost('engine')}
                     </button>
                   </div>
                   
-                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2">
-                    <Battery className="w-6 h-6 text-emerald-400" />
-                    <h3 className="font-bold text-white text-center text-sm min-h-[2.5rem] flex items-center justify-center">Extended Battery</h3>
-                    <p className="text-[10px] text-slate-400 text-center h-8 flex items-center justify-center">Increases max fuel capacity by 20%</p>
-                    <div className="text-xs font-mono text-slate-300 text-center">Lvl {Math.round((mods.battery - 1) / 0.2)}</div>
+                  <div className="bg-slate-800/50 p-2 md:p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-1 md:gap-2">
+                    <Battery className="w-4 h-4 md:w-6 md:h-6 text-emerald-400" />
+                    <h3 className="font-bold text-white text-center text-[10px] md:text-sm uppercase tracking-tight">Fuel</h3>
+                    <div className="text-[8px] md:text-[10px] font-mono text-slate-400 leading-none">Lvl {Math.round((mods.battery - 1) / 0.2)}</div>
                     <button 
                       onClick={() => buyMod('battery')}
                       disabled={totalScore < getModCost('battery')}
-                      className="mt-auto px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-sm transition-colors cursor-pointer"
+                      className="mt-auto px-2 py-1 md:px-3 md:py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-[9px] md:text-sm transition-colors cursor-pointer"
                     >
-                      {getModCost('battery')} CR
+                      {getModCost('battery')}
                     </button>
                   </div>
 
-                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2">
-                    <Shield className="w-6 h-6 text-blue-400" />
-                    <h3 className="font-bold text-white text-center text-sm min-h-[2.5rem] flex items-center justify-center">Hull Armor</h3>
-                    <p className="text-[10px] text-slate-400 text-center h-8 flex items-center justify-center">Absorbs 1 collision per level</p>
-                    <div className="text-xs font-mono text-slate-300 text-center">Charges: {mods.armor}</div>
+                  <div className="bg-slate-800/50 p-2 md:p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-1 md:gap-2">
+                    <Shield className="w-4 h-4 md:w-6 md:h-6 text-blue-400" />
+                    <h3 className="font-bold text-white text-center text-[10px] md:text-sm uppercase tracking-tight">Armor</h3>
+                    <div className="text-[8px] md:text-[10px] font-mono text-slate-400 leading-none">HP: {mods.armor}</div>
                     <button 
                       onClick={() => buyMod('armor')}
                       disabled={totalScore < getModCost('armor')}
-                      className="mt-auto px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-sm transition-colors cursor-pointer"
+                      className="mt-auto px-2 py-1 md:px-3 md:py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-[9px] md:text-sm transition-colors cursor-pointer"
                     >
-                      {getModCost('armor')} CR
+                      {getModCost('armor')}
                     </button>
                   </div>
 
-                  <div className="bg-slate-800 p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-2">
-                    <Magnet className="w-6 h-6 text-purple-400" />
-                    <h3 className="font-bold text-white text-center text-sm min-h-[2.5rem] flex items-center justify-center">Fuel Magnet</h3>
-                    <p className="text-[10px] text-slate-400 text-center h-8 flex items-center justify-center">Attracts fuel from distance</p>
-                    <div className="text-xs font-mono text-slate-300 text-center">Lvl {Math.round((mods.magnet || 0) / 0.5)}</div>
+                  <div className="bg-slate-800/50 p-2 md:p-3 rounded-xl border border-slate-700 flex flex-col items-center gap-1 md:gap-2">
+                    <Magnet className="w-4 h-4 md:w-6 md:h-6 text-purple-400" />
+                    <h3 className="font-bold text-white text-center text-[10px] md:text-sm uppercase tracking-tight">Magnet</h3>
+                    <div className="text-[8px] md:text-[10px] font-mono text-slate-400 leading-none">Lvl {Math.round((mods.magnet || 0) / 0.5)}</div>
                     <button 
                       onClick={() => buyMod('magnet' as any)}
                       disabled={totalScore < getModCost('magnet' as any)}
-                      className="mt-auto px-3 py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-sm transition-colors cursor-pointer"
+                      className="mt-auto px-2 py-1 md:px-3 md:py-1.5 bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white rounded-lg font-semibold w-full text-[9px] md:text-sm transition-colors cursor-pointer"
                     >
-                      {getModCost('magnet' as any)} CR
+                      {getModCost('magnet' as any)}
                     </button>
                   </div>
                 </div>
 
-                <div className="w-full h-px bg-slate-700 my-4" />
-                <h3 className="text-xl font-bold text-white mb-3">Cosmetics</h3>
-                <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                <div className="w-full h-px bg-slate-700 my-2 md:my-4" />
+                <h3 className="text-sm md:text-xl font-bold text-white mb-2 md:mb-3 uppercase tracking-wider">Skins</h3>
+                <div className="grid grid-cols-5 gap-1.5 md:gap-2">
                   {(Object.keys(SKINS) as SkinId[]).map((skinId) => {
                     const skin = SKINS[skinId];
                     const isUnlocked = unlockedSkins.includes(skinId);
                     const isEquipped = equippedSkin === skinId;
                     return (
-                      <div key={skinId} className={`bg-slate-800 p-2 rounded-xl border ${isEquipped ? 'border-emerald-500' : 'border-slate-700'} flex flex-col items-center gap-1`}>
-                        <div className="w-8 h-8 rounded-full shadow-inner border-2 border-slate-900" style={{ backgroundColor: skin.color }} />
-                        <h4 className="font-bold text-white text-[10px] text-center">{skin.name}</h4>
+                      <div key={skinId} className={`bg-slate-800/50 p-1 md:p-2 rounded-xl border ${isEquipped ? 'border-emerald-500' : 'border-slate-700'} flex flex-col items-center gap-1`}>
+                        <div className="w-5 h-5 md:w-8 md:h-8 rounded-full shadow-inner border-2 border-slate-900" style={{ backgroundColor: skin.color }} />
+                        <h4 className="font-bold text-white text-[6px] md:text-[10px] text-center truncate w-full uppercase tracking-tighter">{skin.name}</h4>
                         <button
                           onClick={() => buyOrEquipSkin(skinId)}
                           disabled={!isUnlocked && totalScore < skin.cost}
-                          className={`mt-auto px-1.5 py-1 text-[10px] rounded-lg font-semibold w-full transition-colors cursor-pointer ${
+                          className={`mt-auto px-1 py-0.5 text-[7px] md:text-[10px] rounded-lg font-semibold w-full transition-colors cursor-pointer ${
                             isEquipped ? 'bg-emerald-500 text-white' :
                             isUnlocked ? 'bg-slate-600 hover:bg-slate-500 text-white' :
                             'bg-blue-600 hover:bg-blue-500 disabled:bg-slate-700 disabled:text-slate-500 text-white'
                           }`}
                         >
-                          {isEquipped ? 'Equipped' : isUnlocked ? 'Equip' : `${skin.cost} CR`}
+                          {isEquipped ? 'Active' : isUnlocked ? 'Equip' : `${skin.cost}`}
                         </button>
                       </div>
                     );
@@ -1174,15 +1238,16 @@ export default function DroneGame() {
                 </div>
 
                 <div className="flex justify-center gap-3 mt-4">
-                  <button onClick={() => setGameState('menu')} className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all border border-slate-700 cursor-pointer text-sm">
-                    Main Menu
+                  <button onClick={() => setGameState('menu')} className="px-4 md:px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all border border-slate-700 cursor-pointer text-[10px] md:text-sm">
+                    Menu
                   </button>
-                  <button onClick={continueFromShop} className="px-8 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer text-sm">
+                  <button onClick={continueFromShop} className="px-6 md:px-8 py-2 bg-emerald-500 hover:bg-emerald-400 text-white rounded-full font-bold flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition-all cursor-pointer text-[10px] md:text-sm">
                     Next Mission <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-            )}
+            </div>
+          )}
 
             {gameState === 'won' && (
               <div className="text-center space-y-6">
@@ -1201,61 +1266,63 @@ export default function DroneGame() {
 
     {/* Mobile Controls */}
     {gameState === 'playing' && (
-      <div className="md:hidden flex justify-between items-end px-4 mt-2 mb-4 touch-none">
+      <div className="md:hidden flex justify-between items-end p-6 fixed bottom-0 left-0 w-full z-50 pointer-events-none mb-4">
         {/* D-Pad */}
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-3 gap-1 pointer-events-auto bg-slate-900/40 p-2 rounded-3xl backdrop-blur-sm border border-white/10 shadow-2xl">
           <div />
           <button 
-            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
             onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <ArrowUp className="w-8 h-8 text-slate-300" />
+            <ArrowUp className="w-8 h-8 text-white" />
           </button>
           <div />
           <button 
-            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
             onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <ArrowLeft className="w-8 h-8 text-slate-300" />
+            <ArrowLeft className="w-8 h-8 text-white" />
           </button>
           <button 
-            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
             onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <ArrowDown className="w-8 h-8 text-slate-300" />
+            <ArrowDown className="w-8 h-8 text-white" />
           </button>
           <button 
-            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
             onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <ArrowRight className="w-8 h-8 text-slate-300" />
+            <ArrowRight className="w-8 h-8 text-white" />
           </button>
         </div>
 
         {/* Action Button */}
-        <div className="flex flex-col items-center mb-2 mr-2">
+        <div className="flex flex-col items-center pointer-events-auto">
           <button 
-            className="w-16 h-16 bg-cyan-900/50 rounded-full flex items-center justify-center border-2 border-cyan-500 active:bg-cyan-800 active:scale-95 transition-transform shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+            className={`w-20 h-20 rounded-full flex items-center justify-center border-4 transition-all shadow-2xl select-none touch-none active:scale-90 ${
+              pulseCooldown === 0 ? 'bg-cyan-500/30 border-cyan-400 shadow-cyan-500/50 animate-pulse' : 'bg-slate-800/80 border-slate-700 opacity-50'
+            }`}
             onPointerDown={(e) => { e.preventDefault(); keysRef.current[' '] = true; }}
             onPointerUp={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
             onPointerLeave={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
             onContextMenu={(e) => e.preventDefault()}
           >
-            <Zap className="w-8 h-8 text-cyan-400" />
+            <Zap className={`w-10 h-10 ${pulseCooldown === 0 ? 'text-cyan-300' : 'text-slate-500'}`} />
           </button>
-          <span className="text-[10px] text-cyan-400 font-bold mt-2 tracking-widest uppercase">Pulse</span>
+          <span className="text-[10px] text-cyan-400 font-bold mt-2 tracking-widest uppercase bg-slate-900/60 px-2 py-0.5 rounded-full border border-white/5 backdrop-blur-sm">Pulse</span>
         </div>
       </div>
     )}
