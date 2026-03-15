@@ -99,11 +99,11 @@ export const LEVELS: Level[] = [
     pad: { x: 700, y: 300, w: 60, h: 10 },
     wind: { x: 0, y: 0 },
     obstacles: [
-      { x: 0, y: 0, w: 800, h: 250 },
-      { x: 0, y: 350, w: 800, h: 250 }
+      { x: 0, y: 0, w: 800, h: 200 },
+      { x: 0, y: 400, w: 800, h: 200 }
     ],
     powerups: [
-      { x: 400, y: 280, type: 'fuel' }
+      { x: 400, y: 300, type: 'fuel' }
     ],
     fuel: 1200,
     parTime: 15
