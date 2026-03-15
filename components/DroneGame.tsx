@@ -12,7 +12,7 @@ import { Joystick } from './Joystick';
 
 export default function DroneGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [gameState, setGameState] = useState<'menu' | 'shop' | 'playing' | 'gameover' | 'levelcomplete' | 'won'>('menu');
+  const [gameState, setGameState] = useState<'menu' | 'shop' | 'playing' | 'gameover' | 'levelcomplete' | 'won' | 'levelselect'>('menu');
   const [levelIndex, setLevelIndex] = useState(0);
   const [score, setScore] = useState(0);
   const [missileDestroyedCount, setMissileDestroyedCount] = useState(0);
@@ -31,6 +31,9 @@ export default function DroneGame() {
   const [medals, setMedals] = useState<Record<number, { time: boolean; fuel: boolean; accuracy: boolean }>>({});
   const [badgeInfo, setBadgeInfo] = useState<string | null>(null);
   const [isCRT, setIsCRT] = useState(true);
+  const [highestLevel, setHighestLevel] = useState(0);
+  const [bestScores, setBestScores] = useState<Record<number, number>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
 
   const gameStateRef = useRef(gameState);
   const levelIndexRef = useRef(levelIndex);
@@ -46,12 +49,38 @@ export default function DroneGame() {
 
   useEffect(() => {
     soundRef.current = new SoundEngine();
+    
+    const saved = localStorage.getItem('drone_pilot_save_v1');
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.bestScores) setBestScores(data.bestScores);
+        if (data.medals) setMedals(data.medals);
+        if (data.highestLevel !== undefined) setHighestLevel(data.highestLevel);
+        if (data.totalScore !== undefined) setTotalScore(data.totalScore);
+        if (data.mods) setMods(data.mods);
+        if (data.unlockedSkins) setUnlockedSkins(data.unlockedSkins);
+        if (data.equippedSkin) setEquippedSkin(data.equippedSkin);
+      } catch (e) {
+        console.error("Failed to load save", e);
+      }
+    }
+    setIsLoaded(true);
+
     return () => {
       if (soundRef.current?.ctx) {
         soundRef.current.ctx.close();
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('drone_pilot_save_v1', JSON.stringify({
+        bestScores, medals, highestLevel, totalScore, mods, unlockedSkins, equippedSkin
+      }));
+    }
+  }, [bestScores, medals, highestLevel, totalScore, mods, unlockedSkins, equippedSkin, isLoaded]);
 
   useEffect(() => {
     gameStateRef.current = gameState;
@@ -509,10 +538,17 @@ export default function DroneGame() {
         
         setScore(levelScore);
         setTotalScore(prev => prev + levelScore);
-        // Update medals
+
+        const idx = levelIndexRef.current;
+        setBestScores(prev => ({
+          ...prev,
+          [idx]: Math.max(prev[idx] || 0, levelScore)
+        }));
+
+        setHighestLevel(prev => Math.max(prev, idx + 1));
+        
         // Update medals (Cumulative: once earned, they stay earned)
         setMedals(prev => {
-          const idx = levelIndexRef.current;
           const current = prev[idx] || { time: false, fuel: false, accuracy: false };
           return {
             ...prev,
@@ -839,11 +875,10 @@ export default function DroneGame() {
   const startGame = () => {
     soundRef.current?.init();
     soundRef.current?.playClick();
-    setLevelIndex(0);
-    setTotalScore(0);
-    setMods({ engine: 1, battery: 1, armor: 0 });
-    levelIndexRef.current = 0;
-    scoreAtLevelStartRef.current = 0;
+    const startLevel = Math.min(highestLevel, LEVELS.length - 1);
+    setLevelIndex(startLevel);
+    levelIndexRef.current = startLevel;
+    scoreAtLevelStartRef.current = totalScore;
     resetDrone();
     setGameState('playing');
   };
@@ -1038,9 +1073,97 @@ export default function DroneGame() {
                   <br />
                   <span className="text-cyan-400 text-sm mt-2 block">NEW: Press [SPACE] to Pulse and destroy missiles/barriers!</span>
                 </p>
-                <button onClick={startGame} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-semibold flex items-center gap-2 mx-auto transition-colors cursor-pointer">
-                  <Play className="w-5 h-5" /> Start Game
-                </button>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                  <button onClick={startGame} className="px-6 py-3 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full font-semibold flex items-center gap-2 transition-colors cursor-pointer w-full sm:w-auto justify-center">
+                    <Play className="w-5 h-5" /> {highestLevel > 0 ? 'Continue' : 'Start Game'}
+                  </button>
+                  <button onClick={() => setGameState('levelselect')} className="px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white rounded-full font-semibold flex items-center gap-2 transition-colors cursor-pointer w-full sm:w-auto justify-center">
+                    <Trophy className="w-5 h-5" /> Missions
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {gameState === 'levelselect' && (
+              <div className="min-h-full w-full flex flex-col md:max-w-4xl md:max-h-[85vh] md:rounded-3xl border-t border-white/10 md:border bg-slate-900/90 backdrop-blur-2xl shadow-2xl p-6 overflow-y-auto">
+                <div className="flex justify-between items-center mb-6 sticky top-0 bg-slate-900/90 py-2 z-10">
+                  <h2 className="text-3xl font-bold text-white">Select Mission</h2>
+                  <button onClick={() => setGameState('menu')} className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-full font-bold transition-all border border-slate-700 cursor-pointer">
+                    Back
+                  </button>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {LEVELS.map((level, idx) => {
+                    const isUnlocked = idx <= highestLevel;
+                    const bestScore = bestScores[idx] || 0;
+                    const levelMedals = medals[idx] || { time: false, fuel: false, accuracy: false };
+                    
+                    return (
+                      <div 
+                        key={idx} 
+                        className={`p-4 rounded-xl border flex flex-col gap-3 transition-all ${
+                          isUnlocked 
+                            ? 'bg-slate-800/80 border-slate-600 hover:border-emerald-500 cursor-pointer hover:bg-slate-800' 
+                            : 'bg-slate-900/50 border-slate-800 opacity-50 cursor-not-allowed'
+                        }`}
+                        onClick={() => {
+                          if (isUnlocked) {
+                            setLevelIndex(idx);
+                            levelIndexRef.current = idx;
+                            scoreAtLevelStartRef.current = totalScore;
+                            resetDrone();
+                            setGameState('playing');
+                          }
+                        }}
+                      >
+                        <div className="flex justify-between items-center">
+                          <h3 className="font-bold text-white text-lg">Level {idx + 1}: {level.name}</h3>
+                          {isUnlocked && <span className="text-xs font-mono text-yellow-400 bg-slate-950 px-2 py-1 rounded-md border border-yellow-500/30">Best: {bestScore}</span>}
+                        </div>
+                        
+                        {isUnlocked && (
+                          <div className="flex gap-2 mt-auto">
+                            <div className={`p-1.5 rounded-lg flex items-center justify-center border ${levelMedals.time ? 'bg-yellow-500/20 border-yellow-500/50 text-yellow-500' : 'bg-slate-900 border-slate-700 text-slate-600'}`} title="Speed Medal">
+                              <Timer className="w-4 h-4" />
+                            </div>
+                            <div className={`p-1.5 rounded-lg flex items-center justify-center border ${levelMedals.fuel ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-500' : 'bg-slate-900 border-slate-700 text-slate-600'}`} title="Fuel Medal">
+                              <Battery className="w-4 h-4" />
+                            </div>
+                            <div className={`p-1.5 rounded-lg flex items-center justify-center border ${levelMedals.accuracy ? 'bg-cyan-500/20 border-cyan-500/50 text-cyan-500' : 'bg-slate-900 border-slate-700 text-slate-600'}`} title="Aim Medal">
+                              <Target className="w-4 h-4" />
+                            </div>
+                          </div>
+                        )}
+                        {!isUnlocked && (
+                          <div className="text-sm text-slate-500 flex items-center gap-2">
+                            Locked
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="mt-8 pt-4 border-t border-slate-800 flex justify-center">
+                  <button 
+                    onClick={() => {
+                      if (window.confirm('Are you sure you want to reset all your progress? This cannot be undone.')) {
+                        setBestScores({});
+                        setMedals({});
+                        setHighestLevel(0);
+                        setTotalScore(0);
+                        setMods({ engine: 1, battery: 1, armor: 0, magnet: 0 });
+                        setUnlockedSkins(['default']);
+                        setEquippedSkin('default');
+                        localStorage.removeItem('drone_pilot_save_v1');
+                      }
+                    }}
+                    className="px-4 py-2 bg-red-900/50 hover:bg-red-800/80 text-red-200 hover:text-white rounded-lg text-sm font-semibold transition-colors border border-red-900/50 cursor-pointer"
+                  >
+                    Reset All Progress
+                  </button>
+                </div>
               </div>
             )}
 
