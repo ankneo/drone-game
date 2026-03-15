@@ -8,6 +8,7 @@ import { SoundEngine } from './drone/SoundEngine';
 import { Obstacle, Powerup, Particle, Level, DroneMods } from './drone/types';
 import { CANVAS_WIDTH, CANVAS_HEIGHT, GRAVITY, THRUST, FRICTION, SKINS, SkinId, LEVELS } from './drone/constants';
 import { checkCollision } from './drone/utils';
+import { Joystick } from './Joystick';
 
 export default function DroneGame() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -102,6 +103,7 @@ export default function DroneGame() {
       pulseRadius: 0,
       tilt: 0
     };
+    keysRef.current = {};
     powerupsRef.current = JSON.parse(JSON.stringify(level.powerups)).map((p: any) => ({
       ...p,
       x: p.x + (Math.random() - 0.5) * 40,
@@ -1269,47 +1271,15 @@ export default function DroneGame() {
     {/* Mobile Controls */}
     {gameState === 'playing' && (
       <div className="md:hidden flex justify-between items-end p-6 fixed bottom-0 left-0 w-full z-50 pointer-events-none mb-4">
-        {/* D-Pad */}
-        <div className="grid grid-cols-3 gap-1 pointer-events-auto bg-slate-900/40 p-2 rounded-3xl backdrop-blur-sm border border-white/10 shadow-2xl">
-          <div />
-          <button 
-            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
-            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = true; }}
-            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
-            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <ArrowUp className="w-8 h-8 text-white" />
-          </button>
-          <div />
-          <button 
-            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
-            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = true; }}
-            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
-            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <ArrowLeft className="w-8 h-8 text-white" />
-          </button>
-          <button 
-            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
-            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = true; }}
-            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
-            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <ArrowDown className="w-8 h-8 text-white" />
-          </button>
-          <button 
-            className="w-14 h-14 bg-slate-800/80 rounded-2xl flex items-center justify-center border border-slate-600 active:bg-emerald-500/50 active:scale-90 transition-all shadow-lg select-none touch-none"
-            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = true; }}
-            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
-            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
-            onContextMenu={(e) => e.preventDefault()}
-          >
-            <ArrowRight className="w-8 h-8 text-white" />
-          </button>
-        </div>
+        {/* Joystick */}
+        <Joystick 
+          onChange={(dir) => {
+            keysRef.current['ArrowUp'] = dir.up;
+            keysRef.current['ArrowDown'] = dir.down;
+            keysRef.current['ArrowLeft'] = dir.left;
+            keysRef.current['ArrowRight'] = dir.right;
+          }} 
+        />
 
         {/* Action Button */}
         <div className="flex flex-col items-center pointer-events-auto">
