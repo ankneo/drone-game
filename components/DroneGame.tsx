@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Play, RotateCcw, ArrowRight, Trophy, Zap, Wrench, Battery, Shield, Clock, Timer, Target, Magnet, ChevronRight, Settings, Info } from 'lucide-react';
+import { Play, RotateCcw, ArrowRight, ArrowUp, ArrowDown, ArrowLeft, Trophy, Zap, Wrench, Battery, Shield, Clock, Timer, Target, Magnet, ChevronRight, Settings, Info } from 'lucide-react';
 
 import { SoundEngine } from './drone/SoundEngine';
 import { Obstacle, Powerup, Particle, Level, DroneMods } from './drone/types';
@@ -1198,6 +1198,67 @@ export default function DroneGame() {
         )}
       </AnimatePresence>
     </div>
+
+    {/* Mobile Controls */}
+    {gameState === 'playing' && (
+      <div className="md:hidden flex justify-between items-end px-4 mt-2 mb-4 touch-none">
+        {/* D-Pad */}
+        <div className="grid grid-cols-3 gap-2">
+          <div />
+          <button 
+            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowUp'] = false; }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <ArrowUp className="w-8 h-8 text-slate-300" />
+          </button>
+          <div />
+          <button 
+            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowLeft'] = false; }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <ArrowLeft className="w-8 h-8 text-slate-300" />
+          </button>
+          <button 
+            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowDown'] = false; }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <ArrowDown className="w-8 h-8 text-slate-300" />
+          </button>
+          <button 
+            className="w-14 h-14 bg-slate-800 rounded-full flex items-center justify-center border border-slate-700 active:bg-slate-700 active:scale-95 transition-transform"
+            onPointerDown={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); keysRef.current['ArrowRight'] = false; }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <ArrowRight className="w-8 h-8 text-slate-300" />
+          </button>
+        </div>
+
+        {/* Action Button */}
+        <div className="flex flex-col items-center mb-2 mr-2">
+          <button 
+            className="w-16 h-16 bg-cyan-900/50 rounded-full flex items-center justify-center border-2 border-cyan-500 active:bg-cyan-800 active:scale-95 transition-transform shadow-[0_0_15px_rgba(6,182,212,0.5)]"
+            onPointerDown={(e) => { e.preventDefault(); keysRef.current[' '] = true; }}
+            onPointerUp={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
+            onPointerLeave={(e) => { e.preventDefault(); keysRef.current[' '] = false; }}
+            onContextMenu={(e) => e.preventDefault()}
+          >
+            <Zap className="w-8 h-8 text-cyan-400" />
+          </button>
+          <span className="text-[10px] text-cyan-400 font-bold mt-2 tracking-widest uppercase">Pulse</span>
+        </div>
+      </div>
+    )}
   </div>
   );
 }
