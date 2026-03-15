@@ -356,7 +356,7 @@ export default function DroneGame() {
       }
     });
 
-    const handleCrash = () => {
+    const handleCrash = (ignoreArmor = false) => {
       addShake(8);
       createParticles(drone.x + drone.w/2, drone.y + drone.h/2, '#ef4444', 15, 'explosion');
       if (drone.shieldActive) {
@@ -365,7 +365,7 @@ export default function DroneGame() {
         drone.vy *= -0.5;
         soundRef.current?.playCrash();
         return false;
-      } else if (drone.armorHits > 0) {
+      } else if (!ignoreArmor && drone.armorHits > 0) {
         drone.armorHits--;
         drone.vx *= -0.5;
         drone.vy *= -0.5;
@@ -389,6 +389,7 @@ export default function DroneGame() {
 
     // Obstacle logic & collision
     let crashed = false;
+    let crashedByMissile = false;
     obstaclesRef.current = obstaclesRef.current.filter(obs => !obs.isDestroyed);
     
     obstaclesRef.current.forEach(obs => {
@@ -462,13 +463,14 @@ export default function DroneGame() {
       } else {
         if (checkCollision(drone, { x: currentX, y: currentY, w: obs.w, h: obs.h })) {
           crashed = true;
+          if (obs.type === 'missile') crashedByMissile = true;
           if (obs.type === 'missile' || obs.type === 'mine') obs.isDestroyed = true;
         }
       }
     });
 
     if (crashed) {
-      if (handleCrash()) {
+      if (handleCrash(crashedByMissile)) {
         soundRef.current?.playCrash();
         setGameState('gameover');
         return;
