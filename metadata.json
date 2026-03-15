@@ -1,0 +1,5 @@
+{
+  "name": "Drone Pilot: Gauntlet",
+  "description": "A physics-based drone flying game with increasing levels of complexity. Navigate through tight spaces, avoid moving obstacles, and battle crosswinds to land safely.",
+  "requestFramePermissions": []
+}
